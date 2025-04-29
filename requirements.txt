@@ -1,5 +1,2 @@
-openai
-requests
-flask
 python-telegram-bot==20.7
 aiohttp

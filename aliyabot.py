@@ -279,10 +279,10 @@ async def main():
             SENDING_PHOTO: [MessageHandler(filters.PHOTO, get_photo)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        per_message=True 
     )
 
     app.add_handler(conv_handler)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, choose_action))
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(CommandHandler("users", show_user_count))
 
@@ -292,8 +292,8 @@ async def main():
 
     async def handler(request):
         data = await request.json()
-        update = Update.de_json(data, app.bot)
-        await app.process_update(update)          
+        update = Update.from_dict(data)
+        app.process_update(update)
         return web.Response(text="OK")
 
     web_app = web.Application()
