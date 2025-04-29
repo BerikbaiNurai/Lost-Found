@@ -1,12 +1,13 @@
 import logging
 import sqlite3
+import os 
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler,
     filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 )
 
-BOT_TOKEN = "7636674578:AAGxeLPP43V1SdfTECRtcNixFiH32GL2HDc"
+BOT_TOKEN = os.getenv("7636674578:AAGxeLPP43V1SdfTECRtcNixFiH32GL2HDc")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,7 +15,6 @@ CHOOSING, TYPING_DESC, ASK_PHOTO, SENDING_PHOTO = range(4)
 
 conn = sqlite3.connect("lostfound.db", check_same_thread=False)
 cursor = conn.cursor()
-
 
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS items (
@@ -41,7 +41,6 @@ cursor.execute('''
     )
 ''')
 conn.commit()
-
 
 def update_button_stat(button_name):
     cursor.execute('''
@@ -111,25 +110,25 @@ async def send_template(update: Update, context: ContextTypes.DEFAULT_TYPE, mode
 async def choose_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message.text
     if msg == "🟢 Нашёл":
-        update_button_stat("Нашёл")  # 👈 UPDATE STATS
+        update_button_stat("Нашёл")
         context.user_data["type"] = "found"
         await send_template(update, context, "found")
         await update.message.reply_text("✏️ Введите описание:")
         return TYPING_DESC
     elif msg == "🔴 Потерял":
-        update_button_stat("Потерял")  # 👈 UPDATE STATS
+        update_button_stat("Потерял")
         context.user_data["type"] = "lost"
         await send_template(update, context, "lost")
         await update.message.reply_text("✏️ Введите описание:")
         return TYPING_DESC
     elif msg == "🟢 Найдено":
-        update_button_stat("Найдено")  # 👈 UPDATE STATS
+        update_button_stat("Найдено")
         return await show_found_items(update, context)
     elif msg == "🔴 Потеряно":
-        update_button_stat("Потеряно")  # 👈 UPDATE STATS
+        update_button_stat("Потеряно")
         return await show_lost_items(update, context)
     elif msg == "🗂 Мои посты":
-        update_button_stat("Мои посты")  # 👈 UPDATE STATS
+        update_button_stat("Мои посты")
         return await show_my_posts(update, context)
     else:
         await update.message.reply_text("Выберите действие с клавиатуры.")
@@ -192,8 +191,7 @@ async def get_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return await start(update, context)
 
 async def show_found_items(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    cursor.execute(
-        "SELECT username, description, photo_file_id FROM items WHERE type = 'found' ORDER BY id DESC LIMIT 5")
+    cursor.execute("SELECT username, description, photo_file_id FROM items WHERE type = 'found' ORDER BY id DESC LIMIT 5")
     rows = cursor.fetchall()
     if not rows:
         await update.message.reply_text("❌ Найденных вещей пока нет.")
@@ -207,8 +205,7 @@ async def show_found_items(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CHOOSING
 
 async def show_lost_items(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    cursor.execute(
-        "SELECT username, description, photo_file_id FROM items WHERE type = 'lost' ORDER BY id DESC LIMIT 5")
+    cursor.execute("SELECT username, description, photo_file_id FROM items WHERE type = 'lost' ORDER BY id DESC LIMIT 5")
     rows = cursor.fetchall()
     if not rows:
         await update.message.reply_text("❌ Потерянных вещей пока нет.")
@@ -239,8 +236,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def show_my_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    cursor.execute("SELECT id, type, description, photo_file_id FROM items WHERE user_id = ? ORDER BY id DESC LIMIT 10",
-                   (user_id,))
+    cursor.execute("SELECT id, type, description, photo_file_id FROM items WHERE user_id = ? ORDER BY id DESC LIMIT 10", (user_id,))
     rows = cursor.fetchall()
     if not rows:
         await update.message.reply_text("❌ У вас пока нет добавленных постов.")
@@ -255,8 +251,7 @@ async def show_my_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if photo:
             await update.message.reply_photo(photo, caption=caption, parse_mode="Markdown", reply_markup=keyboard)
         else:
-            await update.message.reply_text(caption + "\n\n📌 *Фото не было отправлено*", parse_mode="Markdown",
-                                            reply_markup=keyboard)
+            await update.message.reply_text(caption + "\n\n📌 *Фото не было отправлено*", parse_mode="Markdown", reply_markup=keyboard)
     return CHOOSING
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -286,6 +281,7 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(CommandHandler("users", show_user_count))
 
+    logging.info("Бот запущен через polling...")
     app.run_polling()
 
 if __name__ == "__main__":
