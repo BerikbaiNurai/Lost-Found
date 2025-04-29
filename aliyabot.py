@@ -279,6 +279,7 @@ async def main():
             SENDING_PHOTO: [MessageHandler(filters.PHOTO, get_photo)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
+        per_message=True 
     )
 
     app.add_handler(conv_handler)
