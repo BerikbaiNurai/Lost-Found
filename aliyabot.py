@@ -291,7 +291,8 @@ async def main():
 
     async def handler(request):
         update = await request.json()
-        await app.update_queue.put(update)
+        update = Update.de_json(data, app.bot)     
+        await app.process_update(update)          
         return web.Response(text="OK")
 
     web_app = web.Application()
