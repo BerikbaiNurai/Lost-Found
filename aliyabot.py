@@ -1,14 +1,18 @@
+import os
 import logging
 import sqlite3
-import os 
+import asyncio
+from aiohttp import web
 from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder, CommandHandler, MessageHandler,
-    filters, ContextTypes, ConversationHandler, CallbackQueryHandler
+    ApplicationBuilder, CommandHandler, MessageHandler, filters,
+    ContextTypes, ConversationHandler, CallbackQueryHandler
 )
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-
+WEBHOOK_PATH = "/webhook"
+PORT = int(os.getenv("PORT", 8080))
+RAILWAY_URL = os.getenv("RAILWAY_URL")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -222,7 +226,6 @@ async def show_lost_items(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     data = query.data
     if data.startswith("delete:"):
         item_id = int(data.split(":")[1])
@@ -245,10 +248,10 @@ async def show_my_posts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for item_id, item_type, desc, photo in rows:
         label = "🟢 Найдено" if item_type == "found" else "🔴 Потеряно"
         caption = f"{label}\n\n*Описание:* {desc}\n*Вы добавили этот пост.*"
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("🗑 Удалить", callback_data=f"delete:{item_id}"),
-             InlineKeyboardButton("✅ Оставить", callback_data="ignore")]
-        ])
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🗑 Удалить", callback_data=f"delete:{item_id}"),
+            InlineKeyboardButton("✅ Оставить", callback_data="ignore")
+        ]])
         if photo:
             await update.message.reply_photo(photo, caption=caption, parse_mode="Markdown", reply_markup=keyboard)
         else:
@@ -264,7 +267,7 @@ async def show_user_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = cursor.fetchone()[0]
     await update.message.reply_text(f"👥 Общее количество пользователей: {count}")
 
-def main():
+async def main():
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     conv_handler = ConversationHandler(
@@ -282,8 +285,23 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     app.add_handler(CommandHandler("users", show_user_count))
 
-    logging.info("Бот запущен через polling...")
-    app.run_polling()
+    await app.bot.delete_webhook()
+    webhook_url = f"{RAILWAY_URL}{WEBHOOK_PATH}"
+    await app.bot.set_webhook(webhook_url)
+
+    async def handler(request):
+        update = await request.json()
+        await app.update_queue.put(update)
+        return web.Response(text="OK")
+
+    web_app = web.Application()
+    web_app.router.add_post(WEBHOOK_PATH, handler)
+
+    print(f"🚀 Webhook работает: {webhook_url}")
+    await app.initialize()
+    await app.start()
+    await web._run_app(web_app, port=PORT)
+    await app.stop()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
