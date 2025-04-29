@@ -290,8 +290,8 @@ async def main():
     await app.bot.set_webhook(webhook_url)
 
     async def handler(request):
-        update = await request.json()
-        update = Update.de_json(data, app.bot)     
+        data = await request.json()
+        update = Update.de_json(data, app.bot)
         await app.process_update(update)          
         return web.Response(text="OK")
 
