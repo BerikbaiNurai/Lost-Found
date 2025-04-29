@@ -7,7 +7,8 @@ from telegram.ext import (
     filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 )
 
-BOT_TOKEN = os.getenv("7636674578:AAGxeLPP43V1SdfTECRtcNixFiH32GL2HDc")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+
 
 logging.basicConfig(level=logging.INFO)
 
